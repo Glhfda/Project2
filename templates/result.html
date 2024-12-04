@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Результаты Проверки Погоды</title>
+    <style>
+        /* Простые стили для улучшения внешнего вида результата */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #eef2f3;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .result-container {
+            background-color: #ffffff;
+            padding: 30px 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 600px;
+        }
+        h2 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #333333;
+        }
+        .city-section {
+            margin-bottom: 20px;
+        }
+        .city-section h3 {
+            margin-bottom: 10px;
+            color: #555555;
+        }
+        .city-section p {
+            margin: 5px 0;
+            color: #333333;
+        }
+        .status {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .back-button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background-color: #007bff;
+            border: none;
+            border-radius: 4px;
+            color: #ffffff;
+            font-size: 16px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+        .back-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="result-container">
+        <h2>Результаты Проверки Погоды</h2>
+
+        <div class="city-section">
+            <h3>Начальная точка: {{ start_city }}</h3>
+            <p><strong>Температура:</strong> {{ temperature_start }}°C</p>
+            <p><strong>Скорость ветра:</strong> {{ wind_speed_start }} км/ч</p>
+            <p><strong>Вероятность осадков:</strong> {{ precip_prob_start }}%</p>
+            <div class="status">
+                <strong>Оценка погодных условий:</strong> {{ weather_status_start }}
+            </div>
+        </div>
+
+        <div class="city-section">
+            <h3>Конечная точка: {{ end_city }}</h3>
+            <p><strong>Температура:</strong> {{ temperature_end }}°C</p>
+            <p><strong>Скорость ветра:</strong> {{ wind_speed_end }} км/ч</p>
+            <p><strong>Вероятность осадков:</strong> {{ precip_prob_end }}%</p>
+            <div class="status">
+                <strong>Оценка погодных условий:</strong> {{ weather_status_end }}
+            </div>
+        </div>
+
+        <a href="{{ url_for('home') }}" class="back-button">Вернуться к форме</a>
+    </div>
+</body>
+</html>
