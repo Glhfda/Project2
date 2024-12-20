@@ -1,20 +1,25 @@
-from flask import Flask, request, render_template, redirect, url_for, flash
+from flask import Flask, request, render_template, redirect, url_for, flash, session
 import requests
 from dotenv import load_dotenv
 import os
 import logging
+import json
+from dash import Dash, dcc, html
+import plotly.graph_objs as go
+from dash.dependencies import Input, Output
+from datetime import datetime
 
-# Загрузка переменных окружения из .env файла
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
 
-# Настройка логирования
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)se%(levelname)s %(name)s %(threadName)s : %(message)s',
-                    filename='app.log',
-                    filemode='a')
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)se%(levelname)s %(name)s %(threadName)s : %(message)s',
+    filename='app.log',
+    filemode='a'
+)
 
 API_KEY = os.getenv('API_KEY')
 
@@ -24,159 +29,169 @@ def check_bad_weather(temperature, wind, precip_prob):
             if wind > 20:
                 if precip_prob > 70:
                     return ('Очень жаркая погода с сильным ветром и высокой вероятностью осадков. '
-                            'Необходимо избегать длительного пребывания на улице.')
+                            'Избегайте длительного пребывания на улице.')
                 else:
                     return ('Очень жаркая погода с сильным ветром. '
-                            'Стоит запастись водой и избегать попадания прямых солнечных лучей.')
+                            'Запаситесь водой и избегайте прямых солнечных лучей.')
             elif precip_prob > 70:
                 return ('Очень жаркая погода с высокой вероятностью осадков. '
-                        'Необходимо избегать длительного пребывания на улице.')
+                        'Избегайте длительного пребывания на улице.')
             else:
                 return ('Очень жаркая и сухая погода. '
-                        'Необходимо пить много воды и избегать физической нагрузки в полуденные часы.')
-
+                        'Пейте много воды и избегайте физической нагрузки в полдень.')
         elif temperature > 25:
             if wind > 20:
                 if precip_prob > 70:
-                    return ('Тёплая погода с сильным ветром и высокой вероятностью осадков. '
-                            'Рекомендуется взять зонтик и защиту от ветра.')
+                    return ('Тёплая погода с сильным ветром и осадками. '
+                            'Возьмите зонтик и ветровку.')
                 else:
                     return ('Тёплая погода с сильным ветром. '
-                            'Стоит продумать защиту от ветра, например, надеть ветровку.')
+                            'Возьмите ветровку.')
             elif precip_prob > 70:
-                return ('Тёплая погода с высокой вероятностью осадков. '
-                        'Рекомендуется взять зонтик и следить за прогнозом.')
+                return ('Тёплая погода с осадками. '
+                        'Возьмите зонтик.')
             else:
-                return ('Тёплая и хорошая погода без сильного ветра и высокой вероятности осадков. '
-                        'Можно легко одеваться и планировать мероприятия на открытом воздухе.')
-
+                return ('Тёплая погода без сильного ветра и высокой вероятности осадков. '
+                        'Подходит для прогулок.')
         elif temperature > 15:
             if wind > 20:
                 if precip_prob > 70:
-                    return ('Прохладная погода с ветром и высокой вероятностью осадков. '
-                            'Рекомендуется взять защиту от дождя и обратить внимание на скорость ветра.')
+                    return ('Прохладно, ветрено и осадки. '
+                            'Возьмите защиту от дождя.')
                 else:
-                    return ('Прохладная погода с ветром. '
-                            'Стоит учитывать скорость ветра при планировании активностей.')
+                    return ('Прохладно и ветрено. '
+                            'Учтите ветер при планировании.')
             elif precip_prob > 70:
-                return ('Прохладная погода с высокой вероятностью осадков. '
-                        'Рекомендуется взять зонтик или плащ.')
+                return ('Прохладно и есть осадки. '
+                        'Возьмите зонтик.')
             else:
                 return ('Прохладная и спокойная погода. '
                         'Подходит для прогулок.')
-
         elif temperature > 0:
             if wind > 20:
                 if precip_prob > 70:
-                    return ('Холодная погода с ветром и высокой вероятностью осадков. '
-                            'Необходимо утепляться и брать зонтик.')
+                    return ('Холодно, ветрено и осадки. '
+                            'Нужна тёплая одежда и зонтик.')
                 else:
-                    return ('Холодная погода со слабым ветром. '
-                            'Рекомендуется надеть теплую одежду.')
+                    return ('Холодно и небольшой ветер. '
+                            'Нужна тёплая одежда.')
             elif precip_prob > 70:
-                return ('Холодная погода с высокой вероятностью осадков. '
-                        'Рекомендуется надеть теплую одежду и взять зонтик.')
+                return ('Холодно и осадки. '
+                        'Тёплая одежда и зонтик обязательны.')
             else:
-                return ('Холодная и сухая погода. '
-                        'Необходимо надеть теплую одежду.')
-
+                return ('Холодно и сухо. '
+                        'Нужна тёплая одежда.')
         else:
             if wind > 20:
                 if precip_prob > 70:
-                    return ('Морозная погода с ветром и высокой вероятностью осадков. '
-                            'Рекомендуется носить утепленную одежду.')
+                    return ('Морозно, сильный ветер и осадки. '
+                            'Очень тёплая одежда необходима.')
                 else:
-                    return ('Морозная погода с ветром. '
-                            'Рекомендуется носить теплую одежду.')
+                    return ('Морозно и ветрено. '
+                            'Очень тёплая одежда необходима.')
             elif precip_prob > 70:
-                return ('Морозная погода с высокой вероятностью осадков. '
-                        'Рекомендуется носить теплую одежду.')
+                return ('Морозно и осадки. '
+                        'Тёплая одежда обязательна.')
             else:
-                return ('Морозная и сухая погода. '
-                        'Рекомендуется носить теплую одежду.')
+                return ('Морозно и сухо. '
+                        'Тёплая одежда обязательна.')
     except Exception as e:
-        logging.error(f"Ошибка в функции check_bad_weather: {e}")
+        logging.error(f"Ошибка check_bad_weather: {e}")
         return "Не удалось оценить погодные условия."
 
-def get_location_key(city_name, api_key):
+def get_location_data(city_name, api_key):
     url = 'http://dataservice.accuweather.com/locations/v1/cities/search'
     params = {
         'apikey': api_key,
         'q': city_name,
         'language': 'ru-RU'
     }
-    try:
-        response = requests.get(url, params=params, timeout=5)
-        response.raise_for_status()
-        data = response.json()
-        if data:
-            return data[0]['Key']
-        else:
-            logging.warning(f"Город '{city_name}' не найден.")
-            return None
-    except requests.Timeout:
-        logging.error(f"Тайм-аут при запросе location key для города '{city_name}'.")
-        return None
-    except requests.RequestException as e:
-        logging.error(f"Ошибка при запросе location key для города '{city_name}': {e}")
+    response = requests.get(url, params=params, timeout=5)
+    response.raise_for_status()
+    data = response.json()
+    if data and 'GeoPosition' in data[0]:
+        location = data[0]
+        location_key = location['Key']
+        lat = location['GeoPosition']['Latitude']
+        lon = location['GeoPosition']['Longitude']
+        return {'key': location_key, 'lat': lat, 'lon': lon}
+    else:
+        logging.warning(f"Город '{city_name}' не найден или нет координат.")
         return None
 
 def get_current_weather(location_key, api_key):
     url = f'http://dataservice.accuweather.com/currentconditions/v1/{location_key}'
     params = {
         'apikey': api_key,
-        'details': 'true'
+        'details': 'true',
+        'language': 'ru-RU'
     }
-    try:
-        response = requests.get(url, params=params, timeout=5)
-        response.raise_for_status()
-        return response.json()
-    except requests.Timeout:
-        logging.error("Тайм-аут при запросе текущей погоды.")
-        return None
-    except requests.RequestException as e:
-        logging.error(f"Ошибка при запросе текущей погоды: {e}")
-        return None
+    response = requests.get(url, params=params, timeout=5)
+    response.raise_for_status()
+    return response.json()
 
 def get_hourly_forecast(location_key, api_key):
     url = f'http://dataservice.accuweather.com/forecasts/v1/hourly/12hour/{location_key}'
     params = {
         'apikey': api_key,
-        'metric': 'true'
+        'metric': 'true',
+        'language': 'ru-RU'
     }
-    try:
-        response = requests.get(url, params=params, timeout=5)
-        response.raise_for_status()
-        return response.json()
-    except requests.Timeout:
-        logging.error("Тайм-аут при запросе почасового прогноза погоды.")
-        return None
-    except requests.RequestException as e:
-        logging.error(f"Ошибка при запросе почасового прогноза погоды: {e}")
-        return None
+    response = requests.get(url, params=params, timeout=5)
+    response.raise_for_status()
+    return response.json()
 
 def extract_current_weather(data):
-    try:
-        current_weather = data[0]
-        temperature = current_weather['Temperature']['Metric']['Value']
-        wind_speed = current_weather['Wind']['Speed']['Metric']['Value']
-        return temperature, wind_speed
-    except (IndexError, KeyError, TypeError) as e:
-        logging.error(f"Ошибка при извлечении текущей погоды: {e}")
-        return None, None
+    current_weather = data[0]
+    temperature = current_weather['Temperature']['Metric']['Value']
+    wind_speed = current_weather['Wind']['Speed']['Metric']['Value']
+    return temperature, wind_speed
 
 def extract_precipitation_probability(forecast_data):
-    try:
-        if not forecast_data:
-            logging.warning("Почасовой прогноз пуст.")
-            return 0
-        # Предположим, что нас интересует вероятность осадков на текущий час
-        current_hour_forecast = forecast_data[0]
-        precip_prob = current_hour_forecast.get('PrecipitationProbability', 0)
-        return precip_prob
-    except (IndexError, KeyError, TypeError) as e:
-        logging.error(f"Ошибка при извлечении вероятности осадков: {e}")
-        return 0
+    current_hour_forecast = forecast_data[0]
+    precip_prob = current_hour_forecast.get('PrecipitationProbability', 0)
+    return precip_prob
+
+def get_daily_forecast(location_key, api_key, days=1):
+    url = f'http://dataservice.accuweather.com/forecasts/v1/daily/{days}day/{location_key}'
+    params = {
+        'apikey': api_key,
+        'metric': 'true',
+        'language': 'ru-RU',
+        'details': 'true'
+    }
+    response = requests.get(url, params=params, timeout=5)
+    response.raise_for_status()
+    return response.json()
+
+def process_forecast_data(data):
+    forecasts = data.get('DailyForecasts', [])
+    result = []
+    for day in forecasts:
+        date_raw = day.get('Date', '')
+        try:
+            date_obj = datetime.fromisoformat(date_raw)
+            date_str = date_obj.strftime('%Y-%m-%d %H:%M')
+        except Exception:
+            date_str = date_raw
+
+        min_temp = day['Temperature']['Minimum']['Value']
+        max_temp = day['Temperature']['Maximum']['Value']
+        wind_speed = day['Day']['Wind']['Speed']['Value']
+        precipitation_probability = day['Day']['PrecipitationProbability']
+        weather_text_day = day['Day']['IconPhrase']
+        weather_text_night = day['Night']['IconPhrase']
+
+        result.append({
+            'date': date_str,
+            'min_temp': min_temp,
+            'max_temp': max_temp,
+            'wind_speed': wind_speed,
+            'precip_prob': precipitation_probability,
+            'weather_text_day': weather_text_day,
+            'weather_text_night': weather_text_night
+        })
+    return result
 
 @app.route('/')
 def home():
@@ -184,71 +199,95 @@ def home():
 
 @app.route('/check_weather', methods=['POST'])
 def check_weather_route():
-    try:
-        start_city = request.form.get('start')
-        end_city = request.form.get('end')
+    start_city = request.form.get('start')
+    end_city = request.form.get('end')
+    stops_line = request.form.get('stops_line', '')
+    stops = [s.strip() for s in stops_line.split() if s.strip()]
+    days = int(request.form.get('days', 1))
 
-        # Проверка на заполненность полей
-        if not start_city or not end_city:
-            flash('Пожалуйста, заполните оба поля: начальную и конечную точки.')
+    if not start_city or not end_city:
+        flash('Пожалуйста, заполните начальную и конечную точки.')
+        return redirect(url_for('home'))
+
+    route_points = [start_city] + stops + [end_city]
+
+    points_data = []
+    for city in route_points:
+        loc_data = get_location_data(city, API_KEY)
+        if not loc_data:
+            flash(f"Не удалось найти точку: {city}. Попробуйте другой город.")
             return redirect(url_for('home'))
+        points_data.append({
+            'city': city,
+            'key': loc_data['key'],
+            'lat': loc_data['lat'],
+            'lon': loc_data['lon']
+        })
 
-        # Получаем location keys для начальной и конечной точек
-        start_location_key = get_location_key(start_city, API_KEY)
-        if not start_location_key:
-            flash(f"Не удалось найти начальную точку: {start_city}. Проверьте название города.")
-            return redirect(url_for('home'))
+    if days > 1 or stops:
+        forecasts_by_points = []
+        for p in points_data:
+            daily_data = get_daily_forecast(p['key'], API_KEY, days=days)
+            processed_data = process_forecast_data(daily_data)
+            forecasts_by_points.append({
+                'city': p['city'],
+                'forecast': processed_data,
+                'lat': p['lat'],
+                'lon': p['lon']
+            })
+        session['forecasts_data'] = json.dumps(forecasts_by_points)
+        session['days'] = days
+        session['is_new_forecast'] = True
 
-        end_location_key = get_location_key(end_city, API_KEY)
-        if not end_location_key:
-            flash(f"Не удалось найти конечную точку: {end_city}. Проверьте название города.")
-            return redirect(url_for('home'))
+        return render_template('result.html',
+                               start_city=start_city,
+                               temperature_start=None,
+                               wind_speed_start=None,
+                               precip_prob_start=None,
+                               weather_status_start=None,
+                               end_city=end_city,
+                               temperature_end=None,
+                               wind_speed_end=None,
+                               precip_prob_end=None,
+                               weather_status_end=None,
+                               forecasts=forecasts_by_points,
+                               days=days,
+                               is_new_forecast=True)
+    else:
+        # Одиночный прогноз для начальной и конечной точки (без промежуточных)
+        start_key = points_data[0]['key']
+        end_key = points_data[-1]['key']
 
-        # Получаем погодные данные для начальной точки
-        current_weather_start = get_current_weather(start_location_key, API_KEY)
-        if not current_weather_start:
-            flash("Не удалось получить текущую погоду для начальной точки.")
-            return redirect(url_for('home'))
-
+        current_weather_start = get_current_weather(start_key, API_KEY)
         temperature_start, wind_speed_start = extract_current_weather(current_weather_start)
-        if temperature_start is None or wind_speed_start is None:
-            flash("Не удалось извлечь температуру или скорость ветра для начальной точки.")
-            return redirect(url_for('home'))
-
-        # Получаем почасовой прогноз для вероятности осадков начальной точки
-        hourly_forecast_start = get_hourly_forecast(start_location_key, API_KEY)
-        if not hourly_forecast_start:
-            flash("Не удалось получить почасовой прогноз погоды для начальной точки.")
-            return redirect(url_for('home'))
-
+        hourly_forecast_start = get_hourly_forecast(start_key, API_KEY)
         precip_prob_start = extract_precipitation_probability(hourly_forecast_start)
-
-        # Оценка погодных условий для начальной точки
         weather_status_start = check_bad_weather(temperature_start, wind_speed_start, precip_prob_start)
 
-        # Получаем погодные данные для конечной точки
-        current_weather_end = get_current_weather(end_location_key, API_KEY)
-        if not current_weather_end:
-            flash("Не удалось получить текущую погоду для конечной точки.")
-            return redirect(url_for('home'))
-
+        current_weather_end = get_current_weather(end_key, API_KEY)
         temperature_end, wind_speed_end = extract_current_weather(current_weather_end)
-        if temperature_end is None or wind_speed_end is None:
-            flash("Не удалось извлечь температуру или скорость ветра для конечной точки.")
-            return redirect(url_for('home'))
-
-        # Получаем почасовой прогноз для вероятности осадков конечной точки
-        hourly_forecast_end = get_hourly_forecast(end_location_key, API_KEY)
-        if not hourly_forecast_end:
-            flash("Не удалось получить почасовой прогноз погоды для конечной точки.")
-            return redirect(url_for('home'))
-
+        hourly_forecast_end = get_hourly_forecast(end_key, API_KEY)
         precip_prob_end = extract_precipitation_probability(hourly_forecast_end)
-
-        # Оценка погодных условий для конечной точки
         weather_status_end = check_bad_weather(temperature_end, wind_speed_end, precip_prob_end)
 
-        # Передача данных в шаблон для отображения
+        forecasts_single_day = []
+        forecasts_single_day.append({
+            'city': start_city,
+            'forecast': [],
+            'lat': points_data[0]['lat'],
+            'lon': points_data[0]['lon']
+        })
+        forecasts_single_day.append({
+            'city': end_city,
+            'forecast': [],
+            'lat': points_data[-1]['lat'],
+            'lon': points_data[-1]['lon']
+        })
+
+        session['forecasts_data'] = json.dumps(forecasts_single_day)
+        session['days'] = 1
+        session['is_new_forecast'] = False
+
         return render_template('result.html',
                                start_city=start_city,
                                temperature_start=temperature_start,
@@ -259,25 +298,66 @@ def check_weather_route():
                                temperature_end=temperature_end,
                                wind_speed_end=wind_speed_end,
                                precip_prob_end=precip_prob_end,
-                               weather_status_end=weather_status_end)
+                               weather_status_end=weather_status_end,
+                               forecasts=forecasts_single_day,
+                               days=1,
+                               is_new_forecast=False)
 
-    except requests.Timeout:
-        # Обработка тайм-аута при запросах к API
-        flash("Время ожидания ответа от сервиса погоды истекло. Пожалуйста, попробуйте позже.")
-        logging.error("Тайм-аут при запросе к API AccuWeather.")
-        return redirect(url_for('home'))
+@app.errorhandler(Exception)
+def handle_exception(e):
+    logging.error(f"Непредвиденная ошибка: {e}")
+    flash("Произошла непредвиденная ошибка. Попробуйте позже.")
+    return redirect(url_for('home'))
 
-    except requests.ConnectionError:
-        # Обработка ошибок соединения
-        flash("Не удалось установить соединение с сервисом погоды. Проверьте ваше интернет-соединение.")
-        logging.error("Ошибка соединения при запросе к API AccuWeather.")
-        return redirect(url_for('home'))
+dash_app = Dash(__name__, server=app, url_base_pathname='/dash_app/')
+dash_app.title = "Интерактивная визуализация погоды"
 
-    except Exception as e:
-        # Обработка всех остальных неожиданных ошибок
-        flash("Произошла непредвиденная ошибка. Пожалуйста, попробуйте позже.")
-        logging.error(f"Непредвиденная ошибка в функции check_weather_route: {e}")
-        return redirect(url_for('home'))
+dash_app.layout = html.Div(children=[
+    html.H1("Интерактивная визуализация прогноза погоды"),
+    html.P("Выберите параметр для отображения:"),
+    dcc.Dropdown(
+        id='parameter-dropdown',
+        options=[
+            {'label': 'Макс. Температура', 'value': 'max_temp'},
+            {'label': 'Мин. Температура', 'value': 'min_temp'},
+            {'label': 'Скорость ветра', 'value': 'wind_speed'},
+            {'label': 'Вероятность осадков', 'value': 'precip_prob'}
+        ],
+        value='max_temp'
+    ),
+    dcc.Graph(id='weather-graph'),
+    html.A("Назад", href='/', style={'display':'block','margin-top':'20px'})
+])
+
+@dash_app.callback(
+    Output('weather-graph', 'figure'),
+    Input('parameter-dropdown', 'value')
+)
+def update_graph(selected_parameter):
+    forecasts_data = json.loads(session.get('forecasts_data', '[]'))
+    if not forecasts_data or len(forecasts_data) == 0:
+        return go.Figure()
+
+    fig = go.Figure()
+    has_data = any(len(x['forecast']) > 0 for x in forecasts_data)
+
+    if has_data:
+        for point in forecasts_data:
+            city = point['city']
+            if len(point['forecast']) > 0:
+                x = [f['date'] for f in point['forecast']]
+                y = [f[selected_parameter] for f in point['forecast']]
+                fig.add_trace(go.Scatter(x=x, y=y, mode='lines+markers', name=city))
+        fig.update_layout(
+            title="Прогноз погоды по маршруту",
+            xaxis_title="Дата",
+            yaxis_title=selected_parameter,
+            legend_title="Город"
+        )
+    else:
+        fig.update_layout(title="Нет данных для графика")
+
+    return fig
 
 if __name__ == "__main__":
     app.run(debug=True)

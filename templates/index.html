@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Проверка Погоды по Маршруту</title>
     <style>
-        /* Простые стили для улучшения внешнего вида формы */
         body {
             font-family: Arial, sans-serif;
             background-color: #eef2f3;
@@ -31,18 +30,12 @@
             color: #555555;
             font-weight: bold;
         }
-        input[type="text"] {
+        input[type="text"], select {
             width: 100%;
             padding: 10px 12px;
             margin-bottom: 20px;
             border: 1px solid #cccccc;
             border-radius: 4px;
-            box-sizing: border-box;
-            transition: border-color 0.3s;
-        }
-        input[type="text"]:focus {
-            border-color: #66afe9;
-            outline: none;
         }
         button {
             width: 100%;
@@ -52,11 +45,6 @@
             border-radius: 4px;
             color: #ffffff;
             font-size: 16px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        button:hover {
-            background-color: #218838;
         }
         .flash-message {
             background-color: #f8d7da;
@@ -81,11 +69,21 @@
           {% endif %}
         {% endwith %}
         <form action="/check_weather" method="POST" id="weatherForm">
-            <label for="start">Начальная точка:</label>
+            <label for="start">Начальная точка (пример: Москва):</label>
             <input type="text" id="start" name="start" placeholder="Введите начальную точку" required>
 
-            <label for="end">Конечная точка:</label>
+            <label for="stops_line">Промежуточные точки (через пробел, например: Тула):</label>
+            <input type="text" id="stops_line" name="stops_line" placeholder="Тула">
+
+            <label for="end">Конечная точка (пример: Берлин):</label>
             <input type="text" id="end" name="end" placeholder="Введите конечную точку" required>
+
+            <label for="days">Прогноз на:</label>
+            <select id="days" name="days">
+                <option value="1">1 день</option>
+                <option value="3">3 дня</option>
+                <option value="5">5 дней</option>
+            </select>
 
             <button type="submit">Проверить Погоду</button>
         </form>
